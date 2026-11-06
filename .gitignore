@@ -1,0 +1,12 @@
+# Python bytecode and local interpreter environments
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# PyCharm project-local settings
+.idea/
+
+# OS/editor noise
+.DS_Store
+Thumbs.db
