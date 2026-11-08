@@ -28,3 +28,10 @@ ev3.screen.print("Color:", detected_color)
 
 # End program
 ev3.screen.print("Done!")
+
+while True:
+    ev3.screen.print("Color:", detected_color)
+    ev3.screen.print("Done!")
+    ev3.speaker.beep(1000)
+    wait(500)
+    ev3.screen.clear()
