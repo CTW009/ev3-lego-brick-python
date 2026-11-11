@@ -38,6 +38,79 @@ class main:
         self.clock = pygame.time.Clock()
         self.font = pygame.font.Font(None, 24)
 
+        self.speed_threshold_since = None
+        self.last_stall_switch_at = pygame.time.get_ticks() - 1500
+
+    def check_motor_stalling(self, motor_data):
+        left_data = motor_data.get("A")
+        right_data = motor_data.get("D")
+        if (
+            left_data is None
+            or left_data.get("speed") is None
+            or right_data is None
+            or right_data.get("speed") is None
+        ):
+            return
+
+        left_target = self.robot_player.left_motor_set_speed or 0
+        right_target = self.robot_player.right_motor_set_speed or 0
+        left_speed = left_data["speed"]
+        right_speed = right_data["speed"]
+
+        left_target_speed = abs(left_target) * motor_target_percentage
+        right_target_speed = abs(right_target) * motor_target_percentage
+        left_stall_limit = abs(left_target) * stall_percentage
+        right_stall_limit = abs(right_target) * stall_percentage
+
+        if self.robot_player.motor_change and (
+            abs(left_speed) >= left_target_speed
+            and abs(right_speed) >= right_target_speed
+        ):
+            self.robot_player.motor_change = False
+            print("switched")
+
+        left_commanded = left_target != 0
+        right_commanded = right_target != 0
+        left_low_speed = left_commanded and abs(left_speed) < left_stall_limit
+        right_low_speed = right_commanded and abs(right_speed) < right_stall_limit
+        left_reported_stalled = left_commanded and left_data.get("stalled", False)
+        right_reported_stalled = right_commanded and right_data.get("stalled", False)
+
+        low_speed_detected = left_low_speed or right_low_speed
+        now = pygame.time.get_ticks()
+        if low_speed_detected:
+            if self.speed_threshold_since is None:
+                self.speed_threshold_since = now
+        else:
+            self.speed_threshold_since = None
+
+        low_speed_confirmed = (
+            self.speed_threshold_since is not None
+            and now - self.speed_threshold_since >= 1000
+        )
+        stalled_ports = []
+        if left_reported_stalled or (low_speed_confirmed and left_low_speed):
+            stalled_ports.append("A")
+        if right_reported_stalled or (low_speed_confirmed and right_low_speed):
+            stalled_ports.append("D")
+
+        if stalled_ports and now - self.last_stall_switch_at >= 1500:
+            print(
+                "Stall detected on motor(s) {0}; switching motor direction".format(
+                    ", ".join(stalled_ports)
+                )
+            )
+            if left_commanded and right_commanded:
+                self.robot_player.start_motors("A", -left_target)
+                self.robot_player.start_motors("D", -right_target)
+            if left_commanded:
+                self.robot_player.start_motors("A", -left_target)
+            if right_commanded:
+                self.robot_player.start_motors("D", -right_target)
+            self.last_stall_switch_at = now
+
+    def front_wheels_up(self, motor_data):
+
 
 #robot states
 
@@ -62,8 +135,6 @@ if __name__ == '__main__':
     app.robot_player.start_motors("D", 600)
     next_motor_read = pygame.time.get_ticks()
     next_data_report = next_motor_read
-    speed_threshold_since = None
-    stall_restart_active = False
     running = True
     try:
         while running:
@@ -93,78 +164,15 @@ if __name__ == '__main__':
                 print(motor_data)
                 next_data_report = pygame.time.get_ticks() + 500
 
-            #speed vars
-            left_speed = app.robot_player.left_motor_speed
-            right_speed = app.robot_player.right_motor_speed
-            left_target = app.robot_player.left_motor_set_speed
-            right_target = app.robot_player.right_motor_set_speed
-
-            # Track target-speed changes separately from ongoing stall detection.
-            try:
-                readings_ready = (
-                    left_motor_data is not None
-                    and left_motor_data.get("speed") is not None
-                    and right_motor_data is not None
-                    and right_motor_data.get("speed") is not None
-                )
-                if readings_ready:
-                    left_target_speed = abs(left_target) * motor_target_percentage
-                    right_target_speed = abs(right_target) * motor_target_percentage
-                    left_stall_limit = abs(left_target) * stall_percentage
-                    right_stall_limit = abs(right_target) * stall_percentage
-
-                    if app.robot_player.motor_change and (
-                        abs(left_speed) >= left_target_speed
-                        and abs(right_speed) >= right_target_speed
-                    ):
-                        app.robot_player.motor_change = False
-                        print("switched")
-
-                    left_commanded = left_target != 0
-                    right_commanded = right_target != 0
-                    left_low_speed = left_commanded and abs(left_speed) < left_stall_limit
-                    right_low_speed = right_commanded and abs(right_speed) < right_stall_limit
-                    left_reported_stalled = left_commanded and left_motor_data.get("stalled", False)
-                    right_reported_stalled = right_commanded and right_motor_data.get("stalled", False)
-
-                    low_speed_detected = left_low_speed or right_low_speed
-                    if low_speed_detected:
-                        if speed_threshold_since is None:
-                            speed_threshold_since = pygame.time.get_ticks()
-                    else:
-                        speed_threshold_since = None
-
-                    low_speed_confirmed = (
-                        speed_threshold_since is not None
-                        and pygame.time.get_ticks() - speed_threshold_since >= 1000
-                    )
-                    stalled_ports = []
-                    if left_reported_stalled or (low_speed_confirmed and left_low_speed):
-                        stalled_ports.append(("A", left_target))
-                    if right_reported_stalled or (low_speed_confirmed and right_low_speed):
-                        stalled_ports.append(("D", right_target))
-
-                    if stalled_ports and not stall_restart_active:
-                        ports = ", ".join(port for port, _ in stalled_ports)
-                        print(f"Stall detected on motor(s) {ports}; restarting at commanded speed")
-
-
-
-
-                        #when a stall occurs this will be executed
-                        app.robot_player.start_motors("A", app.robot_player.left_motor_set_speed*-1)
-                        app.robot_player.start_motors("D", app.robot_player.right_motor_set_speed*-1)
-
-                        stall_restart_active = True
-                    elif not low_speed_detected and not left_reported_stalled and not right_reported_stalled:
-                        stall_restart_active = False
-
-            except Exception as exc:
-                print(f"Motor check error: {exc}")
+            app.check_motor_stalling(motor_data)
 
             # NEXT TO ADD IS USING LOAD WE CAN FIGURE OUT IF THE MOTORS ARE ON THE GROUND OR NOT
-
-
+            #COLOR DETECTION
+            #INTERUPTS FOR THE COLOR DETECTION BASED ON SURONDINGS
+            #ATTACK MODE
+            #SEARCH MODE
+            #FLEE MODE
+            #
 
 
             lines = []
