@@ -36,13 +36,7 @@ class Wheel_Odometry:
         self.motors=motors
         self.wheel_diameter = 53  # mm
         self.wheel_spaceing=145.6 # mm
-        self.left_wheel_travel = 0  # this is the amount of distance one wheel will travel and is estamited
-        self.right_wheel_travel = 0
-        #inital, and final vars
-        self.start_angle_L = 0
-        self.start_angle_R = 0
-        self.curent_angle_L = 0
-        self.curent_angle_R = 0
+
         self.error_correction=.05 #amount of seconds that are to correct the time for the motors to speed up
 
 

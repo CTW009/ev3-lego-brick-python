@@ -41,11 +41,6 @@ def turn_right(speed):
 
 
 
-
-
-
-
-
 robot = Robot()
-robot.wheel_odometry.turn_degree(360,500,300)
+robot.wheel_odometry.turn_degree(180,500,300)
 main()

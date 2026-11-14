@@ -68,7 +68,17 @@ To use the Pygame app as a connected PC client, run:
 
 The app uploads the brick controller over RFCOMM. It displays the connection status and received text output. The Pygame client sends a heartbeat every 500 ms; if the PC app exits unexpectedly, the EV3 stops all motors and exits the controller after 2.5 seconds without a heartbeat. From Python, `robot_player.rotate_motor("B", 360, 250)` sends a motor move and `robot_player.read_motor_data("all")` requests readings from ports A-D. Call `robot_player.update()` to process new output, then read `robot_player.get_motor_data()`. The result is a dictionary keyed by port, with `angle`, `speed`, `load`, `stalled`, and `done` values. For example, `robot_player.get_motor_data()["A"]["speed"]` returns the latest speed reading for port A.
 
-Use either the Pygame app or the standalone `pc_controller.py` terminal session at a time; both upload and start the same EV3 controller program.
+Use the Pygame app or standalone `pc_controller.py` terminal session as the EV3 controller; both upload and run the command server. The radar test viewer starts `raydar.py` instead, so run only one of these apps at a time.
+
+## Temporary desktop radar test view
+
+The viewer starts `raydar.py` on the EV3 and receives its `RADAR|angle|distance` output in the same Pybricks session. Use this single command from a Windows terminal; do not also run `pb run raydar.py` separately.
+
+```powershell
+.\venv\Scripts\python.exe Robot\radar_viewer.py --hub "YOUR EV3 NAME"
+```
+
+The viewer requires Pybricks 4.1 EV3 firmware. Closing the window stops this test run. Both scripts ignore readings outside 500 mm. The viewer defaults to 100°/s with a 500 deg/s² ramp up and 250 deg/s² ramp down. Set the `RADAR_SPEED_DEG_PER_SEC`, `RADAR_ACCELERATION_UP_DEG_PER_SEC2`, and `RADAR_ACCELERATION_DOWN_DEG_PER_SEC2` variables in `Robot/radar_viewer.py`, or pass `--speed`, `--ramp-up`, and `--ramp-down`. The speed range is 50–500°/s; ramp limits are 50–2000 deg/s². Object clusters require at least four readings over 6°; they split at gaps over 5° or distance changes over 100 mm. These scan-local IDs separate sonar returns but do not identify object types.
 
 ## Official references
 
