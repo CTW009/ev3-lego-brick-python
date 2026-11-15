@@ -1,4 +1,6 @@
 from Motors import Motors, Wheel_Odometry
+from raydar import RayDar
+
 from pybricks.hubs import EV3Brick
 
 
@@ -12,7 +14,7 @@ class Robot:
     def __init__(self):
         self.motor = Motors() #put in varibles that we need to be global
         self.wheel_odometry = Wheel_Odometry(self.motor)
-
+        self.raydar = RayDar()
 
 
 
@@ -42,5 +44,6 @@ def turn_right(speed):
 
 
 robot = Robot()
-robot.wheel_odometry.turn_degree(180,500,300)
+#robot.wheel_odometry.turn_degree(180,500,300)
+robot.raydar.run_raydar_one_cycle()
 main()
