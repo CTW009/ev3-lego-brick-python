@@ -24,53 +24,40 @@ class colour:
        self.sensor_2 = ColorSensor(Port.S2)
        self.sensor_3 = ColorSensor(Port.S3)
 
-   def detect_left(self):
-        return self.detect_color(self.sensor_1)
+   async def detect_left(self):
+       return await self.detect_color(self.sensor_1)
 
-   def detect_right(self):
-        return self.detect_color(self.sensor_2)
+   async def detect_right(self):
+       return await self.detect_color(self.sensor_2)
 
+   async def detect_back(self):
+       return await self.detect_color(self.sensor_3)
 
-   def detect_back(self):
-        return self.detect_color(self.sensor_3)
+   async def detect_color(self, sensor):
 
+       # Read the sensor asynchronously.
+       detected = await sensor.color()
 
-   def detect_color(self, sensor):
-       """
-       :returns: 1 ,2, 3, 4, 5,
-       -1 if no color detected
-       """
+       print("Detected:", detected)
 
-
-       detected = sensor.color()
-
-
-       # Check the detected colour and return its assigned value.
+       # Convert detected colour into a numerical value.
        if detected == Color.BLACK:
            return 1
-
 
        elif detected == Color.WHITE:
            return 0
 
-
        elif detected == Color.GREEN:
            return 2
-
 
        elif detected == Color.RED:
            return 3
 
-
        elif detected == Color.YELLOW:
            return 4
-
 
        elif detected == Color.BLUE:
            return 5
 
-
-       # Return -1 if the sensor detects a colour
-       # that is not included in the list above.
        else:
            return -1

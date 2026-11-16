@@ -1,108 +1,21 @@
+from pybricks.tools import run_task
+
 from Motors import Motors, Wheel_Odometry
 from raydar import RayDar
-
+import objective_manger
 from pybricks.hubs import EV3Brick
-
-
+import colour
 ev3 = EV3Brick()
 
-
-class states:
-
-    def __init__(self):
-
-        self.Launching = False
-        self.searching=False
-        self.attack=False
-        self.fleeing=False
-        self.color_objective=False
-        self.locked = False
-        self.locked_process=None
-
-    def set_state(self,state):
-        if self.set_locked:
-            pass
-        else:
-            self.set_locked = True
-            self.locked_process = state
-
-            if state == "launching":
-                self.Launching = True
-            if state == "searching":
-                self.searching = True
-            if state == "attacking":
-                self.attack= True
-            if state == "fleeing":
-                self.fleeing = True
-            if state == "color_objective":
-                self.color_objective = True
+class Controller:
+    def __init__(self,main_pointer):
+        self.states=objective_manger.States()
+        self.manager=objective_manger.ProcessManager(self.states,main_pointer)
 
 
+    async def main(self):
 
-
-
-
-
-
-    def set_state(self,state,overide):
-
-        self.set_locked = True
-        self.locked_process = state
-
-        self.Launching = False
-        self.searching = False
-        self.attack=False
-        self.fleeing = False
-        self.color_objective = False
-
-
-        if state == "launching":
-            self.Launching = True
-        if state == "searching":
-            self.searching = True
-        if state == "attacking":
-            self.attack = True
-        if state == "fleeing":
-            self.fleeing = True
-        if state == "color_objective":
-            self.color_objective = True
-
-
-
-
-    def read_state(self):
-        return self.locked_process
-
-    def set_lock(self,process_locked):
-        if self.locked:
-            return False
-        else:
-            self.locked = process_locked
-            self.locked_process = process_locked
-            return True
-
-
-
-
-
-    def is_launching(self):
-        return self.Launching
-    def is_searching(self):
-        return self.searching
-    def is_attacking(self):
-        return self.attack
-    def is_fleeing(self):
-        return self.fleeing
-    def is_color_objective(self):
-        return self.color_objective
-
-
-
-
-
-
-
-
+        await self.manager.execute()
 
 
 
@@ -113,35 +26,26 @@ class Robot:
         self.motor = Motors() #put in varibles that we need to be global
         self.wheel_odometry = Wheel_Odometry(self.motor)
         self.raydar = RayDar(self.motor)
+        self.colour=colour.colour()
+        self.controller = Controller(self)
+
+    async def test_states(self):
+        from pybricks.tools import wait
+
+        self.controller.states.set_state("searching")
+
+        await wait(3000)
+
+        self.controller.states.set_state("attacking")
+
+        await wait(3000)
+
+        self.controller.states.set_state("idle")
 
 
 
-
-
-
-def main():
-    while True:
-        pass
-
-
-
-def move_forward():
-    robot.motor.speed_LR(800, 800)
-
-def move_backward():
-    robot.motor.speed_LR(-800, -800)
-
-def turn_left(speed):
-    robot.motor.speed_L(0)
-    robot.motor.speed_R(speed)
-
-def turn_right(speed):
-    robot.motor.speed_R(0)
-    robot.motor.speed_L(speed)
-
-
-
+#starts up ROBOTTTTTTT
 robot = Robot()
-robot.wheel_odometry.turn_degree(180,500,300)
-robot.raydar.rotate()
-main()
+
+#starts the controller!!!!!
+run_task(robot.controller.main())
