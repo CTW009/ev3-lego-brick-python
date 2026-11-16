@@ -5,7 +5,7 @@ class Motors:
     def __init__(self):
         self.motor1 = Motor(port=Port.A, gears=[12,20])
         self.motor2 = Motor(port=Port.D, gears=[12,20])
-        #self.motor3 = Motor(Port.B)
+        self.motor3 = Motor(Port.B)
 
     def speed_L(self, speed):
         self.motor1.run(-speed)
@@ -40,7 +40,7 @@ class Wheel_Odometry:
         self.error_correction=.05 #amount of seconds that are to correct the time for the motors to speed up
 
 
-    def degre_to_turn(self,angle):
+    def degree_to_turn(self,angle):
         return (abs(angle)*self.wheel_spaceing)/self.wheel_diameter
         #M = |turn angle| × wheel spacing ÷ wheel diameter
 
@@ -72,7 +72,7 @@ class Wheel_Odometry:
 
          | turn angle | × wheel spacing
         ─────────────────────────────────────────
-        wheel diameter × motor speed
+        wheel diameter × motor speed 
         
 
         #gives us how much we need to rotate
@@ -86,8 +86,7 @@ class Wheel_Odometry:
             print("invalid number passed")
             return
 
-        self.start_angle_L = self.motors.motor1.angle()
-        self.start_angle_R = self.motors.motor2.angle()
+
         #calc seconds for turn
         seconds=self.calulate_turning_seconds(degree,speed,aceleration)
 
@@ -105,7 +104,7 @@ class Wheel_Odometry:
         self.motors.motor2.control.limits(abs(speed), abs(aceleration), 100)
 
         #converting for run time in ms*
-        ms=int(seconds*1000 + 0.5)
+        ms=int(seconds*1000)
         #if turning left or right!
 
         # Positive degrees turn clockwise; negative degrees turn counterclockwise.
