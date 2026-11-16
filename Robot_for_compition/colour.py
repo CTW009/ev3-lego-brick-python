@@ -24,6 +24,16 @@ class colour:
        self.sensor_2 = ColorSensor(Port.S2)
        self.sensor_3 = ColorSensor(Port.S3)
 
+   def detect_left(self):
+        return self.detect_color(self.sensor_1)
+
+   def detect_right(self):
+        return self.detect_color(self.sensor_2)
+
+
+   def detect_back(self):
+        return self.detect_color(self.sensor_3)
+
 
    def detect_color(self, sensor):
        """
