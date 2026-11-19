@@ -1,25 +1,77 @@
+
 from pybricks.ev3devices import Motor
-from pybricks.parameters import Port
+from pybricks.tools import wait
 import math
+from settings import Hardware, Motors as MotorSettings, Strain
+
+
 class Motors:
+
     def __init__(self):
-        self.motor1 = Motor(port=Port.A, gears=[12,20])
-        self.motor2 = Motor(port=Port.D, gears=[12,20])
-        self.motor3 = Motor(Port.B)
-        self.motor1.control.limits(1000, 500, 100)
-        self.motor2.control.limits(1000, 500, 100)
+        self.motor1 = Motor(port=Hardware.LEFT_MOTOR_PORT, gears=MotorSettings.LEFT_GEAR)
+        self.motor2 = Motor(port=Hardware.RIGHT_MOTOR_PORT, gears=MotorSettings.RIGHT_GEAR)
+        self.motor3 = Motor(port=Hardware.RADAR_MOTOR_PORT)
+
+        self.motor1.control.limits(
+            MotorSettings.CONTROL_SPEED,
+            MotorSettings.CONTROL_ACCELERATION,
+            MotorSettings.CONTROL_TORQUE_LIMIT
+        )
+        self.motor2.control.limits(
+            MotorSettings.CONTROL_SPEED,
+            MotorSettings.CONTROL_ACCELERATION,
+            MotorSettings.CONTROL_TORQUE_LIMIT
+        )
+
+        self.set_left_speed = 0
+        self.set_right_speed = 0
+
     def speed_L(self, speed):
+        self.set_left_speed = abs(speed)
         self.motor1.run(-speed)
 
     def speed_R(self, speed):
+        self.set_right_speed = abs(speed)
         self.motor2.run(speed)
 
-    #def speed_T(self, speed):
-        #self.motor3.speed(speed)
+    # def speed_T(self, speed):
+    #     self.motor3.speed(speed)
 
     def speed_LR(self, speed1, speed2):
+        self.set_left_speed = abs(speed1)
+        self.set_right_speed = abs(speed2)
+
         self.motor1.run(-speed1)
         self.motor2.run(speed2)
+
+    def get_motor_feedback(self):
+
+        left_speed = abs(self.motor1.speed())
+        right_speed = abs(self.motor2.speed())
+
+        left_load = abs(self.motor1.load())
+        right_load = abs(self.motor2.load())
+
+        return {
+            "left": {
+                "actual_speed": left_speed,
+                "commanded_speed": self.set_left_speed,
+                "load": left_load
+            },
+
+            "right": {
+                "actual_speed": right_speed,
+                "commanded_speed": self.set_right_speed,
+                "load": right_load
+            }
+        }
+
+    def stop_wheels(self):
+        self.motor1.stop()
+        self.motor2.stop()
+
+        self.set_left_speed = 0
+        self.set_right_speed = 0
 
     @staticmethod
     def current_speed(motor):
@@ -27,92 +79,178 @@ class Motors:
 
     @staticmethod
     def hold_speed(motor):
-        motor.hold_speed(0)
+        motor.hold()
 
 
 class Wheel_Odometry:
 
     def __init__(self, motors):
+
         self.motors = motors
-        self.wheel_diameter = 53  # mm
-        self.wheel_spaceing = 145.6  # mm
 
+        self.wheel_diameter = MotorSettings.WHEEL_DIAMETER_MM
+        self.wheel_spacing = MotorSettings.WHEEL_SPACING_MM
 
+        self.mm_per_degree = (
+            math.pi * self.wheel_diameter / 360
+        )
 
-    def degre_to_turn(self, angle):
-        return (abs(angle) * self.wheel_spaceing) / self.wheel_diameter
-        # M = |turn angle| × wheel spacing ÷ wheel diameter
+        # Local encoder reference
+        self.reference_left = self.motors.motor1.angle()
+        self.reference_right = self.motors.motor2.angle()
 
-    def calulate_turning_seconds(self, angle, speed, aceleration):
-        degrees = self.degre_to_turn(angle)
-        speed = abs(speed)
-        aceleration = abs(aceleration)
-        if speed == 0 or aceleration == 0:
-            return -1
-        # error handling
+    # ========================================
+    # RELATIVE ROTATION
+    # ========================================
 
-        if degrees >= math.pow(speed, 2) / aceleration:
-            # Accelerate to speed, cruise, then decelerate to a stop.
-            return degrees / speed + speed / aceleration
-        else:
-            # Short turn: accelerate and decelerate without reaching max speed.
-            return 2 * math.sqrt(degrees / aceleration)
+    def get_relative_rotation(self):
 
-        # calc time
+        left_angle = self.motors.motor1.angle()
+        right_angle = self.motors.motor2.angle()
 
-        """print(f"angle:{angle},speed:{speed}")
-        return (abs(angle) *self.wheel_spaceing)/(self.wheel_diameter * speed)
+        # Correct for opposing motor mounting
+        left_change = -(
+            left_angle - self.reference_left
+        )
 
+        right_change = (
+            right_angle - self.reference_right
+        )
 
-         | turn angle | × wheel spacing
-        ─────────────────────────────────────────
-        wheel diameter × motor speed 
+        left_distance = (
+            left_change * self.mm_per_degree
+        )
 
+        right_distance = (
+            right_change * self.mm_per_degree
+        )
 
-        #gives us how much we need to rotate
-        # """
+        rotation = math.degrees(
+            (right_distance - left_distance)
+            / self.wheel_spacing
+        )
 
-    # TURNS AT CENTER OF ROBOT/center of rotation
-    async def turn_degree(self, degree, speed, aceleration):
-        print("turn degree:", degree)
+        return rotation
+
+    # ========================================
+    # RESET REFERENCE
+    # ========================================
+
+    def reset_relative_rotation(self):
+
+        self.reference_left = (
+            self.motors.motor1.angle()
+        )
+
+        self.reference_right = (
+            self.motors.motor2.angle()
+        )
+
+    # ========================================
+    # TURN CALCULATIONS
+    # ========================================
+
+    def degree_to_wheel_rotation(self, angle):
+
+        distance = (
+            abs(angle) * math.pi * self.wheel_spacing
+        ) / 360
+
+        return (
+            distance / (math.pi * self.wheel_diameter)
+        ) * 360
+
+    # ========================================
+    # ENCODER-BASED TURN
+    # ========================================
+
+    async def turn_degree(
+        self,
+        degree,
+        speed,
+        acceleration
+    ):
+
         if degree == 0:
-            print("invalid number passed")
             return
 
-        # calc seconds for turn
-        seconds = self.calulate_turning_seconds(degree, speed, aceleration)
+        wheel_rotation = (
+            self.degree_to_wheel_rotation(degree)
+        )
 
-        # error correction/proscessing
-        if seconds == -1:
-            print("invalid number passed")
-            return
-        seconds = seconds
+        direction = 1 if degree > 0 else -1
 
-        reset_vals1 = await self.motors.motor1.control.limits()
-        reset_vals2 = await self.motors.motor2.control.limits()
+        left_target = (
+            self.motors.motor1.angle()
+            + direction * wheel_rotation
+        )
 
-        # limits motors for a consitant actions
-        self.motors.motor1.control.limits(abs(speed), abs(aceleration), 100)
-        self.motors.motor2.control.limits(abs(speed), abs(aceleration), 100)
+        right_target = (
+            self.motors.motor2.angle()
+            + direction * wheel_rotation
+        )
 
-        # converting for run time in ms*
-        ms = int(seconds * 1000)
-        # if turning left or right!
+        left_limits = self.motors.motor1.control.limits()
+        right_limits = self.motors.motor2.control.limits()
 
-        # Positive degrees turn clockwise; negative degrees turn counterclockwise.
-        # The left motor is mounted in the opposite direction to the right motor.
-        motor_speed = -abs(speed) if degree > 0 else abs(speed)
-        self.motors.motor1.run_time(motor_speed, ms, wait=False)
-        self.motors.motor2.run_time(motor_speed, ms, wait=True)
+        try:
 
-        # reset limits to before turn
-        #self.motors.motor1.control.limits(reset_vals1[0], reset_vals1[1], reset_vals1[2])
-        #self.motors.motor2.control.limits(reset_vals2[0], reset_vals2[1], reset_vals2[2])
+            self.motors.motor1.control.limits(
+                abs(speed), abs(acceleration), 100
+            )
 
+            self.motors.motor2.control.limits(
+                abs(speed), abs(acceleration), 100
+            )
 
+            self.motors.motor1.run_target(
+                abs(speed) * direction,
+                left_target,
+                wait=False
+            )
 
+            self.motors.motor2.run_target(
+                abs(speed) * direction,
+                right_target,
+                wait=False
+            )
 
+            while (
+                not self.motors.motor1.done()
+                or not self.motors.motor2.done()
+            ):
 
+                await wait(MotorSettings.TURN_LOOP_INTERVAL_MS)
+
+        finally:
+
+            self.motors.motor1.control.limits(*left_limits)
+            self.motors.motor2.control.limits(*right_limits)
+
+            # Hand the drive motors directly back to forward motion instead
+            # of inserting a stopped interval after every turn.
+            self.motors.speed_LR(speed, speed)
+
+    # ========================================
+    # TEST
+    # ========================================
+
+    async def test_relative_rotation(self):
+
+        self.reset_relative_rotation()
+
+        print("Relative rotation test started")
+
+        while True:
+
+            rotation = self.get_relative_rotation()
+
+            print(
+                "Relative rotation:",
+                round(rotation, 2)
+            )
+
+            await wait(MotorSettings.POST_TURN_TEST_INTERVAL_MS)
 
 
 
