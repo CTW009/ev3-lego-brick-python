@@ -14,6 +14,7 @@ class Hardware:
 class Motors:
     LEFT_GEAR = [12, 20]
     RIGHT_GEAR = [12, 20]
+    Raydar_GEAR = [12, 20]
     CONTROL_SPEED = 1000
     CONTROL_ACCELERATION = 500
     CONTROL_TORQUE_LIMIT = 100

@@ -33,6 +33,7 @@ class ProcessManager:
         self.last_search_scan = -1
         self.last_pursuit_scan = -1
         self.radar_paused = False
+        self.last_debug_radar_state = None
 
         # Physical target contact
         self.contact_speed_threshold = Strain.CONTACT_SPEED_RATIO_THRESHOLD
@@ -656,14 +657,35 @@ class ProcessManager:
 
             state = self.states.read_state()
 
+            if state != self.last_debug_radar_state:
+                print("RADAR PROCESS STATE:", state)
+                self.last_debug_radar_state = state
+
             if state == "searching":
+
+                # Start forward motion before the 360-degree scan so the robot
+                # moves throughout the sweep instead of waiting for it to finish.
+                self.motors.speed_LR(
+                    self.moving_speed,
+                    self.moving_speed
+                )
+
+                print("DEBUG SEARCH: moving + full 360 scan")
 
                 await radar.scan(
                     self.states,
                     "searching"
                 )
 
+                if self.states.is_state("searching"):
+                    self.motors.speed_LR(
+                        self.moving_speed,
+                        self.moving_speed
+                    )
+
             elif state == "attacking":
+
+                print("DEBUG ATTACK: short forward scan")
 
                 await radar.short_scan(
                     self.states,
@@ -964,13 +986,16 @@ class States:
 
     def clear_state(self):
 
+        print("State clearing: -> idle")
         self.current_state = "idle"
         self.locked = False
 
     def lock_state(self):
+        print("DEBUG STATE LOCKED:", self.current_state)
         self.locked = True
 
     def unlock_state(self):
+        print("DEBUG STATE UNLOCKED:", self.current_state)
         self.locked = False
 
     def is_state(self, state):

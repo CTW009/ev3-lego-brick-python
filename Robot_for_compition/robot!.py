@@ -1,10 +1,11 @@
-from pybricks.tools import run_task
+from pybricks.tools import run_task, wait
 
 from Motors import Motors, Wheel_Odometry
 from raydar import RayDar
 import objective_manger
 from pybricks.hubs import EV3Brick
 import colour
+
 ev3 = EV3Brick()
 
 class Controller:
@@ -29,7 +30,7 @@ class Robot:
         self.colour=colour.colour()
         self.controller = Controller(self)
 
-    async def test_states(self):
+    """async def test_states(self):
         from pybricks.tools import wait
 
         self.controller.states.set_state("searching")
@@ -40,7 +41,8 @@ class Robot:
 
         await wait(3000)
 
-        self.controller.states.set_state("idle")
+        self.controller.states.set_state("idle")"""
+
 
 
 
@@ -48,4 +50,5 @@ class Robot:
 robot = Robot()
 
 #starts the controller!!!!!
+wait(5000)
 run_task(robot.controller.main())

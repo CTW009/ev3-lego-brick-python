@@ -10,7 +10,7 @@ class Motors:
     def __init__(self):
         self.motor1 = Motor(port=Hardware.LEFT_MOTOR_PORT, gears=MotorSettings.LEFT_GEAR)
         self.motor2 = Motor(port=Hardware.RIGHT_MOTOR_PORT, gears=MotorSettings.RIGHT_GEAR)
-        self.motor3 = Motor(port=Hardware.RADAR_MOTOR_PORT)
+        self.motor3 = Motor(port=Hardware.RADAR_MOTOR_PORT, gears=MotorSettings.Raydar_GEAR)
 
         self.motor1.control.limits(
             MotorSettings.CONTROL_SPEED,
